@@ -1,0 +1,300 @@
+:root {
+  --lava: #e85030;
+  --lava-glow: #ff6b35;
+  --gold: #d4a017;
+  --gold-bright: #ffd700;
+  --surface: #f7f4ec; /* 오빠, 종이 느낌 나는 미색으로 바꿨어 💋 */
+  --stone: #0a0a0a;
+  --safe: #16a34a;
+  --danger: #dc2626;
+  --my-blue: #1a6fd4;
+  --paper: #ffffff;
+  --ink: #000000;
+  --shadow-hard: 6px 6px 0 #000;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Outfit', 'Inter', -apple-system, sans-serif; /* 오빠, 더 둥글둥글하고 시크한 폰트 추천 💋 */
+  background: #1a1a1a;
+  color: var(--ink);
+  overflow: hidden;
+}
+
+#app {
+  width: 390px;
+  height: 844px;
+  background: var(--surface);
+  border: 5px solid var(--ink);
+  box-shadow: 15px 15px 0 rgba(0, 0, 0, 0.5);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: var(--surface);
+}
+
+.screen.hidden, .hidden {
+  display: none !important;
+}
+
+/* 스케치 패널 공통 스타일 🔞💋 */
+.sketch-panel,
+.grand-prize-display,
+.matching-box,
+.stat-box,
+.timer-bar .timer-value,
+.reward-tile,
+.lq-title,
+.lq-title-sm,
+.clear-message,
+.rank-item,
+.attempt-panel {
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: var(--shadow-hard);
+  color: var(--ink);
+  transition: transform 0.1s;
+}
+
+.lq-title {
+  margin: 30px auto 10px;
+  padding: 15px 30px;
+  font-weight: 900;
+  font-size: 1.8rem;
+  text-align: center;
+  transform: rotate(-1.5deg); /* 약간 삐딱하게 스케치 느낌! 💋 */
+}
+
+.grand-prize-display {
+  margin: 15px 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.prize-amount { font-weight: 900; font-size: 2rem; color: var(--gold); }
+
+/* 캔버스 컨테이너 사이즈 확실히 고정! (4번 해결) 🔞💋 */
+.lava-canvas {
+  width: 100%;
+  height: 480px; /* 고정 높이로 연출 튐 방지 */
+  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  margin: 10px 0;
+}
+
+/* 벼룩처럼 튀는 버튼 연출 💋 */
+.btn-primary,
+.btn-challenge,
+.btn-secondary,
+.btn-success,
+.btn-fail,
+.btn-continue,
+.btn-close {
+  appearance: none;
+  border: 4px solid var(--ink);
+  border-radius: 24px;
+  padding: 18px;
+  font-weight: 900;
+  font-size: 1.2rem;
+  background: var(--paper);
+  box-shadow: var(--shadow-hard);
+  cursor: pointer;
+  transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-primary:active, .btn-challenge:active, .btn-success:active, .btn-fail:active {
+  transform: translate(4px, 4px) scale(0.98);
+  box-shadow: 2px 2px 0 #000;
+}
+
+.btn-challenge { 
+  background: var(--gold-bright); 
+  width: 100%; 
+  font-size: 1.5rem;
+  margin-top: 10px;
+}
+
+/* 순위표 (2번 해결) 🔞💋 */
+.rank-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.rank-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+}
+
+.rank-item.me {
+  background: #e3f2fd;
+  border-color: var(--my-blue);
+  transform: scale(1.02);
+}
+
+.rank-item.me-out {
+  background: #eee;
+  border-color: #999;
+}
+
+/* 실패 & 보상 컨테이너 (중앙 정렬) 🔞💋 */
+.fail-scene-container,
+.reward-scene-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.fail-panel,
+.reward-main-panel {
+  width: 90%;
+  padding: 40px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fail-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--danger);
+  text-shadow: 2px 2px 0 #000;
+}
+
+.fail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.no-retry-notice {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #666;
+  padding: 10px;
+  border-top: 2px dashed #ccc;
+  margin-top: 10px;
+}
+
+/* 보상 화면 디테일 💋 */
+.reward-header-info {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 10px;
+}
+
+.final-rank-badge {
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.final-clear {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--my-blue);
+}
+
+.clear-bonus-box {
+  background: #fff9c4;
+  padding: 15px;
+  border-radius: 15px;
+  border: 3px solid var(--ink);
+  font-weight: 900;
+  font-size: 1.2rem;
+}
+
+.bonus-highlight {
+  color: #d84315;
+  font-size: 1.5rem;
+}
+
+/* FX 레이어 버그 수정: #app 내부에 갇히도록! 🔞💋 */
+#lq-fx-mount {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: hidden;
+  border-radius: 20px; /* #app 라운딩에 맞춤 */
+}
+
+/* 보상 화면 (2번 해결) 💋 */
+.reward-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* 세로로 더 큼직하게! */
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.reward-tile {
+  padding: 25px;
+  font-weight: 800;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+/* 텍스트 스타일 */
+.lq-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.stats-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.stat-box { padding: 12px; text-align: center; }
+.stat-label { font-size: 0.8rem; font-weight: 800; color: var(--danger); margin-bottom: 5px; }
+.stat-value { font-weight: 900; font-size: 1.4rem; }
+
+#screen-attempt {
+  background: rgba(247, 244, 236, 0.9); /* 종이 질감 투명 배경 💋 */
+  backdrop-filter: blur(4px);
+  justify-content: center;
+  padding: 40px;
+}
+
+.attempt-panel {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.attempt-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+
+/* 토스트 메시지도 스케치 느낌 💋 */
+.toast {
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  box-shadow: 8px 8px 0 #000;
+  border-radius: 15px;
+  padding: 15px 30px;
+  font-weight: 900;
+}

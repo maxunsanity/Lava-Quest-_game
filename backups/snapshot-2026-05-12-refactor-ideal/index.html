@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+  <title>Lava Quest</title>
+</head>
+<body>
+<div id="app">
+
+  <!-- 화면 1: 매칭 -->
+  <div id="screen-matching" class="screen">
+    <div class="lq-title">Lava Quest</div>
+    <div class="grand-prize-display">
+      <div class="prize-chest">🏆</div>
+      <div class="prize-label">그랜드 프라이즈!</div>
+      <div class="prize-amount" id="prize-amount">10,000</div>
+    </div>
+    <div class="matching-box">
+      <div class="matching-text">같은 구간 플레이어를 찾는 중입니다</div>
+      <div class="matching-count"><span id="match-current">1</span>/100</div>
+    </div>
+    <div id="avatar-stack" class="avatar-stack"></div>
+    <button id="btn-matching-continue" type="button" class="btn-primary hidden">계속하려면 탭하세요</button>
+  </div>
+
+  <!-- 화면 2: 메인 로비 -->
+  <div id="screen-lobby" class="screen hidden">
+    <div class="lq-header">
+      <button type="button" class="btn-info" id="btn-lobby-info" aria-label="정보">ℹ️</button>
+      <div class="lq-title-sm">Lava Quest</div>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-box">
+        <div class="stat-label">레벨</div>
+        <div class="stat-value" id="stat-levels">0/7</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">플레이어</div>
+        <div class="stat-value" id="stat-players">100/100</div>
+      </div>
+    </div>
+    <div class="timer-bar">
+      <div class="timer-icon">⏱</div>
+      <div class="timer-value" id="lobby-timer">23:59:54</div>
+    </div>
+
+    <div id="canvas-container" class="lava-canvas"></div>
+
+    <div class="lobby-footer ui-interactive">
+      <button id="btn-start-attempt" type="button" class="btn-challenge">도전 시작</button>
+      <button id="btn-ranking" type="button" class="btn-secondary">100인 현황</button>
+    </div>
+  </div>
+
+  <!-- 화면 3: 게임 시도 -->
+  <div id="screen-attempt" class="screen hidden">
+    <div id="attempt-flash-overlay" class="lq-flash-overlay" aria-hidden="true"></div>
+    <div class="attempt-header">
+      <div class="attempt-level">레벨 <span id="attempt-level-num">1</span> / 7</div>
+      <div class="attempt-players">👥 <span id="attempt-players-alive">100</span>명 생존</div>
+    </div>
+    <div class="attempt-body">
+      <div class="attempt-label">게임 시도</div>
+      <div class="attempt-sub" id="attempt-tip">성공하면 다음 레벨로 진행합니다</div>
+    </div>
+    <div class="attempt-buttons">
+      <button id="btn-success" type="button" class="btn-success">✅ 성공</button>
+      <button id="btn-fail" type="button" class="btn-fail">❌ 실패</button>
+    </div>
+  </div>
+
+  <!-- 화면 4: 클리어 연출 -->
+  <div id="screen-clear" class="screen hidden">
+    <div class="lq-header">
+      <div class="lq-title-sm">Lava Quest</div>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-box stat-highlight">
+        <div class="stat-label">레벨</div>
+        <div class="stat-value" id="clear-levels">1/7</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">플레이어</div>
+        <div class="stat-value" id="clear-players">72/100</div>
+      </div>
+    </div>
+    <div class="timer-bar compact">
+      <div class="timer-icon">⏱</div>
+      <div class="timer-value" id="clear-timer">23:52:43</div>
+    </div>
+    <div class="clear-message" id="clear-message">
+      축하합니다! 다음 코스로 진출했습니다!
+    </div>
+
+    <div id="canvas-container-clear" class="lava-canvas"></div>
+
+    <div id="player-group" class="player-group ui-interactive"></div>
+
+    <button id="btn-clear-continue" type="button" class="btn-continue">계속하려면 탭하세요</button>
+  </div>
+
+  <!-- 화면 5: 실패 -->
+  <div id="screen-fail" class="screen hidden">
+    <div class="fail-scene">
+      <div class="fail-title">도전 실패!</div>
+      <div class="fail-level">레벨 <span id="fail-level">1</span>에서 실패</div>
+      <div class="fail-record">이번 클리어: <span id="fail-clear-count">0</span>연속</div>
+      <div class="no-retry-notice">
+        🔒 이 이벤트는 1회만 도전 가능합니다
+      </div>
+      <button id="btn-fail-reward" type="button" class="btn-primary">보상 확인</button>
+    </div>
+  </div>
+
+  <!-- 화면 6: 전체 클리어 -->
+  <div id="screen-full-clear" class="screen hidden">
+    <div id="full-clear-overlay" class="lq-gold-overlay" aria-hidden="true"></div>
+    <div class="full-clear-scene">
+      <div class="full-clear-title" id="full-clear-title-el">🔥 전체 클리어!!</div>
+      <div class="full-clear-badge">7레벨 완주</div>
+      <div class="survivors-info">
+        생존자 <span id="survivors-count">9</span>명과 프라이즈 공유
+      </div>
+      <div class="prize-share">
+        프라이즈를 나누는 다른 우승자는
+        <span id="share-count">8</span>명입니다!
+      </div>
+      <div id="winner-avatars" class="winner-avatars"></div>
+      <button id="btn-full-clear-reward" type="button" class="btn-primary">보상 수령</button>
+    </div>
+  </div>
+
+  <!-- 화면 7: 순위표 -->
+  <div id="screen-ranking" class="screen hidden">
+    <div class="ranking-header">
+      <div class="ranking-title">100인 현황</div>
+      <button id="btn-ranking-close" type="button" class="btn-close" aria-label="닫기">✕</button>
+    </div>
+    <div id="rank-list" class="rank-list"></div>
+  </div>
+
+  <!-- 화면 8: 보상 -->
+  <div id="screen-reward" class="screen hidden">
+    <div class="reward-header">
+      <div class="final-rank-badge">🏆 <span id="final-rank">1</span>위</div>
+      <div class="final-clear">클리어: <span id="final-clear-count">7</span>/7</div>
+    </div>
+    <div class="reward-grid" id="reward-grid"></div>
+    <div class="clear-bonus" id="clear-bonus">
+      클리어 보너스 ×<span id="bonus-multiplier">2.5</span>
+    </div>
+    <button id="btn-reward-confirm" type="button" class="btn-primary">확인</button>
+  </div>
+
+  <div id="lq-fx-mount" class="lq-fx-mount" aria-hidden="true"></div>
+
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
