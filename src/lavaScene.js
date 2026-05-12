@@ -15,10 +15,12 @@ import {
   syncCameraLookYWorld,
   TOP_VIEW_LOOK_AT,
   tweenCameraShake,
+  tweenCameraZoom,
   tweenFleaHops,
   tweenWorldPos,
   worldUnitsPerPixel,
   xzScatterDelta,
+  createDustBurst,
 } from './three/players.js'
 
 /** 연출 가속: 1=기본, 작을수록 빠름 (트윈·대기 간격 공통) */
@@ -42,7 +44,7 @@ const WORLD_BASE_Y = 2.85
 const LOOK_DECK_LOCAL = 5.86
 
 /** 캔버스 세로 기준 시야를 위로 올리는 양(px). 값을 줄이면 시야가 아래로(화면 기준 하단/경로 앞쪽) 내려간다. */
-const FRAMING_SHIFT_UP_PX = -62
+const FRAMING_SHIFT_UP_PX = 0
 
 /**
  * @param {HTMLElement} containerEl
@@ -67,7 +69,7 @@ export function mountLavaScene(containerEl, bots, aliveSetInitial, opts = {}) {
     // 탑뷰: 값을 내리면 카메라가 시선점에 더 가까워져(낮아져) 전장 프레이밍이 살짝 달라짐
     cameraLiftY: 72,
     frustumHalfH: LAVA_FRUSTUM_HALF_H,
-    bottomTrim: 5.5,
+    bottomTrim: 0, // 하단 잘림 방지 💋
   })
 
   const worldRoot = new THREE.Group()
@@ -158,7 +160,16 @@ export function mountLavaScene(containerEl, bots, aliveSetInitial, opts = {}) {
       const mesh = sprites[0]
       if (oldT && newT && mesh) {
         mesh.position.set(oldT.x, oldT.y, oldT.z)
-        await tweenWorldPos(mesh, { x: newT.x, y: newT.y, z: newT.z }, paceMs(340), quadOut)
+        // 다음 돌로 점프할 때 2배 줌인 (쉐이크 삭제 💋)
+        await Promise.all([
+          tweenWorldPos(mesh, { x: newT.x, y: newT.y, z: newT.z }, paceMs(450), quadOut),
+          tweenCameraZoom(ctx.camera, 2.0, newT, paceMs(450), paceMs)
+        ])
+        createDustBurst(ctx.scene, newT)
+        
+        // 착지 후 줌인 상태 유지 (오빠의 요청대로 끝까지 밀착! 💋)
+        await delay(paceMs(200))
+        // 줌아웃 로직 삭제 완료 ❤️‍🔥
       }
     }
 
@@ -241,7 +252,6 @@ export function mountLavaScene(containerEl, bots, aliveSetInitial, opts = {}) {
 
       const me = sprites[0]
       await Promise.all([
-        tweenCameraShake(ctx.camera, 0.74, 3, paceMs(220)),
         tweenWorldPos(me, {
           x: me.position.x + 1.1,
           y: me.position.y - 9.35,

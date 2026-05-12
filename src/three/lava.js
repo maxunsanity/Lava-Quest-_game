@@ -9,13 +9,13 @@ export function createLavaPlane() {
   cnv.height = 256
   const ctx = cnv.getContext('2d')
   if (ctx) {
-    // 배경: 흰색 (스케치 종이 느낌)
-    ctx.fillStyle = '#ffffff'
+    // 배경: 아주 어두운 숯검정 (돌과 유닛을 돋보이게 함)
+    ctx.fillStyle = '#0a0a0a'
     ctx.fillRect(0, 0, 256, 256)
 
-    // 물결 스케치 (연한 회색 선)
-    ctx.strokeStyle = '#dddddd'
-    ctx.lineWidth = 1.5
+    // 물결 스케치 (매우 어두운 빨강/갈색 선)
+    ctx.strokeStyle = '#220a05'
+    ctx.lineWidth = 2.0
     ctx.lineCap = 'round'
     for (let i = 0; i < 8; i++) {
       const y = 20 + i * 32

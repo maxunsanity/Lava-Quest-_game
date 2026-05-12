@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 
-export const PLAYER_START_Z = 12
-export const STEP_Z_DELTA = -5.5
-/** 오쏘 탑뷰 세로 반절경 — 약간 넓히면 돌계단 전체가 프레임에 여유 */
-export const LAVA_FRUSTUM_HALF_H = 28.5
+export const PLAYER_START_Z = 20
+export const STEP_Z_DELTA = -6.5
+/** 오쏘 탑뷰 세로 반절경 — 32로 상향하여 아래쪽 돌계단까지 전체 시야 확보! 💋 */
+export const LAVA_FRUSTUM_HALF_H = 32
 
-export const TOP_VIEW_LOOK_AT = Object.freeze({ x: 0, y: -3.03, z: -12 })
+export const TOP_VIEW_LOOK_AT = Object.freeze({ x: 0, y: -3.03, z: -4 }) // 상하 밸런스를 위해 -4로 확정! 💋
 
 export let CAMERA_LOOK_Y = TOP_VIEW_LOOK_AT.y
 
@@ -57,29 +57,68 @@ function ringOffset(slot, count) {
 
 function markerMaterial(isMe) {
   return new THREE.MeshBasicMaterial({
-    color: isMe ? 0x1a6fd4 : 0x999999,
-    depthTest: false,
+    color: isMe ? 0x00ffff : 0xffffff,
+    depthTest: false, // 다른 유닛과 높이 비교 차단 💋
     depthWrite: false,
+    transparent: false
+  })
+}
+
+function outlineMaterial() {
+  return new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    depthTest: false, // 테두리도 비교 차단 💋
+    depthWrite: false,
+    transparent: false
   })
 }
 
 /**
  * @returns {THREE.Mesh[]}
  */
-export function createPlayerSprites(scene, bots, markerRadiusWorld = 0.05) {
+export function createPlayerSprites(scene, bots, markerRadiusWorld = 0.06) {
   const meshes = []
-  const segments = markerRadiusWorld < 0.08 ? 6 : 10
+  const segments = 48 // 16에서 48로 늘려서 매끄러운 원으로! 💋
   for (let i = 0; i < bots.length; i++) {
-    const r = i === 0 ? markerRadiusWorld * 1.14 : markerRadiusWorld
+    const group = new THREE.Group()
+    group.name = `lq-p-group-${i}`
+    // 유닛들끼리 겹칠 때 지저분한 무늬(Z-fighting) 안 생기게 서열 정리 🔞
+    group.position.y = i * 0.001 
+
+    // 외곽선 (색상이 더 꽉 차 보이게 아주 얇게 💋)
+    const outGeo = new THREE.CircleGeometry(markerRadiusWorld * 1.1, segments)
+    const outline = new THREE.Mesh(outGeo, outlineMaterial())
+    outline.position.y = -0.005
+    outline.renderOrder = i * 10 + 10 // 개별 렌더링 순서 부여 🔞
+    group.add(outline)
+
+    // 본체
+    const r = i === 0 ? markerRadiusWorld * 1.1 : markerRadiusWorld
     const geo = new THREE.CircleGeometry(r, segments)
     const mesh = new THREE.Mesh(geo, markerMaterial(i === 0))
-    mesh.rotation.x = -Math.PI / 2
-    mesh.name = `lq-p-${i}`
-    // i===0 플레이어는 동일 규칙(18000+i*2)이면 최저 레이어 → 봇 원에 덮임. 플레이어만 최상위.
-    mesh.renderOrder = i === 0 ? 32000 : 18000 + i * 2
-    mesh.visible = false
-    scene.add(mesh)
-    meshes.push(mesh)
+    mesh.renderOrder = i * 10 + 11 // 본체는 테두리보다 살짝 위에 🔞
+    group.add(mesh)
+
+    // 내 유닛용 글로우 오라 (강렬한 사이언 💋)
+    if (i === 0) {
+      const glowGeo = new THREE.CircleGeometry(markerRadiusWorld * 2.2, segments)
+      const glowMat = new THREE.MeshBasicMaterial({ 
+        color: 0x00ffff, 
+        transparent: true, 
+        opacity: 0.5,
+        depthTest: false,
+        depthWrite: false
+      })
+      const glow = new THREE.Mesh(glowGeo, glowMat)
+      glow.position.y = -0.02
+      group.add(glow)
+    }
+
+    group.rotation.x = -Math.PI / 2
+    group.renderOrder = i === 0 ? 32000 : 18000 + i * 2
+    group.visible = false
+    scene.add(group)
+    meshes.push(group)
   }
   return meshes
 }
@@ -123,18 +162,27 @@ export function computeClusterTargets(aliveSet, playerClears, bots) {
   aliveSorted.forEach((idx, slot) => {
     /* 동시 게임: 생존자 전원 같은 티어 = 완료한 돌 개수(playerClears) */
     const tier = THREE.MathUtils.clamp(playerClears, 0, 7)
-
     const cz = zForClears(tier) + MARKER_Z_BIAS
-
-    const ring = ringOffset(slot, aliveSorted.length)
-    const xo = Number.parseFloat(String(bots[idx]?.x_offset ?? '0')) || 0
-    const xBias = THREE.MathUtils.clamp(xo * 0.35 + ring.dx * 0.18 + ring.dx * (idx !== 0 ? 0.12 : 0), -4.2, 4.2)
     const zx = zigXForTier(tier)
 
+    // 2열 배치 로직: slot을 기준으로 앞줄(0), 뒷줄(1) 결정 🔞
+    const row = slot % 2
+    const isFront = row === 0
+    const col = Math.floor(slot / 2)
+    
+    // 가로 배치: 중앙에서부터 양옆으로 촘촘하게 💋
+    const xSpacing = 0.24 // 0.32에서 0.24로 줄임
+    const colLimit = 15 // 한 줄에 더 많이 빽빽하게 💋
+    const xOff = (col % colLimit - (colLimit - 1) * 0.5) * xSpacing
+    
+    // 앞뒤 간격(Z) 초밀착 부여 ❤️‍🔥
+    const rowZ = isFront ? 0.24 : -0.24 // 0.75에서 0.24로 대폭 축소!
+    const jitterX = (idx * 137 % 100) / 1000 - 0.05 
+
     out[idx] = {
-      x: (idx === 0 ? xBias * 0.35 + 0.1 : xBias) + zx,
-      y: DECK_Y + (slot % 3) * 0.028 + ring.dz * 0.38 + (idx === 0 ? 0.03 : -0.015),
-      z: cz + ring.dz * 0.5,
+      x: zx + xOff + jitterX + (idx === 0 ? 0.1 : 0),
+      y: DECK_Y + (idx === 0 ? 0.05 : 0), 
+      z: cz + rowZ,
     }
   })
 
@@ -196,6 +244,9 @@ export async function tweenFleaHops(mesh, end, opts = {}) {
       wp.y += 0.15 + (h % 3) * 0.04
     }
     await tweenWorldPos(mesh, { x: wp.x, y: wp.y, z: wp.z }, dur + h * 9, easeFn)
+    // 씬에 직접 추가하기 위해 mesh의 부모(worldRoot)를 통해 접근하거나 
+    // 여기서는 간단히 mesh.parent가 scene이라고 가정 (createPlayerSprites에서 추가됨)
+    if (mesh.parent) createDustBurst(mesh.parent, wp)
   }
 }
 
@@ -217,6 +268,39 @@ export function tweenWorldPos(obj, end, durMs, easeFn = quadOut) {
   })
 }
 
+/** 카메라 줌 & 위치 트윈 */
+export function tweenCameraZoom(cam, targetZoom, targetLook, durMs, paceMsFn) {
+  const startZoom = cam.zoom
+  const startPos = cam.position.clone()
+  const baseLook = new THREE.Vector3(TOP_VIEW_LOOK_AT.x, CAMERA_LOOK_Y, TOP_VIEW_LOOK_AT.z)
+  const t0 = performance.now()
+  
+  return new Promise((resolve) => {
+    function frame(now) {
+      const k = Math.min(1, (now - t0) / durMs)
+      const ease = 1 - (1 - k) * (1 - k) // quadOut
+      
+      cam.zoom = THREE.MathUtils.lerp(startZoom, targetZoom, ease)
+      // 시점 이동 (아래로 살짝 굽어지는 곡선 연출 💋)
+      const curLook = baseLook.clone().lerp(new THREE.Vector3(targetLook.x, CAMERA_LOOK_Y, targetLook.z), ease)
+      
+      // 아래로 살짝 휘어지는 효과 (Sin 곡선 추가 ❤️‍🔥)
+      const curveDip = Math.sin(k * Math.PI) * 2.8 // 2.8만큼 아래로 휘어짐
+      curLook.z += curveDip
+      
+      cam.position.x = THREE.MathUtils.lerp(startPos.x, curLook.x, ease)
+      cam.position.z = THREE.MathUtils.lerp(startPos.z, curLook.z + 72, ease)
+      
+      cam.lookAt(curLook.x, CAMERA_LOOK_Y, curLook.z)
+      cam.updateProjectionMatrix()
+      
+      if (k >= 1) resolve()
+      else requestAnimationFrame(frame)
+    }
+    requestAnimationFrame(frame)
+  })
+}
+
 export function tweenCameraShake(cam, amp, twists, durMs = 380) {
   const basePos = cam.position.clone()
   const look = new THREE.Vector3(TOP_VIEW_LOOK_AT.x, CAMERA_LOOK_Y, TOP_VIEW_LOOK_AT.z)
@@ -224,8 +308,9 @@ export function tweenCameraShake(cam, amp, twists, durMs = 380) {
   return new Promise((resolve) => {
     function frame(now) {
       const k = Math.min(1, (now - t0) / durMs)
+      // Y축(높이) 흔들림 제거하여 카메라가 아래로 가라앉는 느낌 방지
       cam.position.x = basePos.x + amp * Math.sin(k * twists * Math.PI * 2)
-      cam.position.y = basePos.y + amp * 0.42 * Math.cos(k * twists * Math.PI * 2)
+      cam.position.z = basePos.z + amp * 0.6 * Math.cos(k * twists * Math.PI * 2)
       cam.lookAt(look.x, look.y, look.z)
       if (k >= 1) {
         cam.position.copy(basePos)
@@ -235,6 +320,46 @@ export function tweenCameraShake(cam, amp, twists, durMs = 380) {
     }
     requestAnimationFrame(frame)
   })
+}
+
+/** 착지 먼지 파티클 생성 */
+export function createDustBurst(scene, pos) {
+  const count = 8
+  const group = new THREE.Group()
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })
+  const geo = new THREE.PlaneGeometry(0.25, 0.25)
+  
+  for (let i = 0; i < count; i++) {
+    const p = new THREE.Mesh(geo, mat.clone())
+    p.position.set(pos.x, pos.y + 0.1, pos.z)
+    p.rotation.x = -Math.PI / 2
+    group.add(p)
+
+    const angle = Math.random() * Math.PI * 2
+    const dist = 0.5 + Math.random() * 0.8
+    const tx = pos.x + Math.cos(angle) * dist
+    const tz = pos.z + Math.sin(angle) * dist
+    
+    const t0 = performance.now()
+    const dur = 400 + Math.random() * 300
+    
+    function animate() {
+      const k = Math.min(1, (performance.now() - t0) / dur)
+      p.position.x = THREE.MathUtils.lerp(pos.x, tx, k)
+      p.position.z = THREE.MathUtils.lerp(pos.z, tz, k)
+      p.material.opacity = 0.6 * (1 - k)
+      p.scale.setScalar(1 - k * 0.5)
+      if (k < 1) requestAnimationFrame(animate)
+      else {
+        group.remove(p)
+        p.geometry.dispose()
+        p.material.dispose()
+      }
+    }
+    requestAnimationFrame(animate)
+  }
+  scene.add(group)
+  setTimeout(() => scene.remove(group), 1000)
 }
 
 function quadOut(t) {

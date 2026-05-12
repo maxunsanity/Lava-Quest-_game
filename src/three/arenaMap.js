@@ -62,39 +62,9 @@ export function createArenaMapDecor() {
   const zs0 = START_Z_NEAR + MARKER_Z_BIAS
   const zs1 = START_Z_FAR + MARKER_Z_BIAS
   const sx = START_X_HALF
-  const startR = [
-    new THREE.Vector3(-sx, LINE_Y, zs0),
-    new THREE.Vector3(sx, LINE_Y, zs0),
-    new THREE.Vector3(sx, LINE_Y, zs1),
-    new THREE.Vector3(-sx, LINE_Y, zs1),
-    new THREE.Vector3(-sx, LINE_Y, zs0),
-  ]
-  const startFlat = /** @type {number[]} */ ([])
-  pushLinePts(startFlat, startR)
-  const gStart = new THREE.BufferGeometry()
-  gStart.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(startFlat), 3))
-  const startLine = new THREE.LineSegments(gStart, bright.clone())
-  startLine.material.color.setHex(0xa7f3d0)
-  startLine.renderOrder = -2
-  root.add(startLine)
+  // 시작 가이드라인 제거 💋
 
-  const stripW = START_X_HALF * 2 + 2
-  const stripD = zs1 - zs0 + 1.4
-  const startPad = new THREE.Mesh(
-    new THREE.PlaneGeometry(stripW, stripD),
-    new THREE.MeshBasicMaterial({
-      color: 0x1d9a62,
-      transparent: true,
-      opacity: 0.13,
-      depthWrite: false,
-      depthTest: true,
-      side: THREE.DoubleSide,
-    }),
-  )
-  startPad.rotation.x = -Math.PI / 2
-  startPad.position.set(0, LINE_Y + 0.026, (zs0 + zs1) * 0.5)
-  startPad.renderOrder = -25
-  root.add(startPad)
+  // 시작 구역 패드 제거 💋
 
   const gx = GOAL_X_HALF
   const gz0 = GOAL_Z_NEAR + MARKER_Z_BIAS

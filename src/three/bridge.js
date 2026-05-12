@@ -6,31 +6,42 @@ export function createBridgeMeshes() {
   const group = new THREE.Group()
   group.name = 'lq-bridge'
 
-  const stoneMat = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 12, specular: 0x2a2a2a })
-  const stoneDarkMat = new THREE.MeshPhongMaterial({ color: 0x050505, shininess: 6, specular: 0x1a1a1a })
+  const stoneMat = new THREE.MeshPhongMaterial({ 
+    color: 0x1a0a05, 
+    shininess: 30, 
+    specular: 0x331100,
+    emissive: 0x220a00
+  })
+  const stoneGlowMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.8 })
   const chestSideMat = new THREE.MeshPhongMaterial({ color: 0x4a3728, shininess: 10 })
-  const goldMat = new THREE.MeshPhongMaterial({ color: 0xd4a017, shininess: 52, specular: 0xffe8aa })
+  const goldMat = new THREE.MeshPhongMaterial({ 
+    color: 0xffcc00, 
+    shininess: 100, 
+    specular: 0xffffff,
+    emissive: 0x442200
+  })
 
   /** @type {THREE.Mesh[]} */
   const steps = []
   for (let i = 0; i < 7; i++) {
     const zx = zigXForTier(i)
     const zz = zForClears(i) + MARKER_Z_BIAS
-    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.65, 0.42, 20), stoneMat)
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.8, 0.6, 24), stoneMat)
     cyl.receiveShadow = true
-    cyl.position.set(zx, -6.05, zz)
+    cyl.position.set(zx, -6.1, zz)
     cyl.name = `lq-step-${i}`
     group.add(cyl)
     steps.push(cyl)
 
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.74, 0.07, 8, 32), stoneDarkMat)
+    // 마그마 글로우 링
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.85, 0.08, 8, 32), stoneGlowMat)
     ring.rotation.x = Math.PI / 2
     ring.position.copy(cyl.position)
-    ring.position.y += 0.2
+    ring.position.y += 0.35
     group.add(ring)
   }
 
-  const islandZ = zForClears(7) + MARKER_Z_BIAS
+  const islandZ = zForClears(7.8) + MARKER_Z_BIAS // 겹침 방지를 위해 7.8로 상향 조정 💋
   const island = new THREE.Mesh(new THREE.BoxGeometry(13, 1.55, 10.5), goldMat)
   island.position.set(0.15, -5.55, islandZ)
   island.name = 'lq-treasure-island'
