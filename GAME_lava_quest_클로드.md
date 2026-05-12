@@ -142,6 +142,51 @@ goals:
   loss:
     - condition: "resolve_failure로 플레이어가 탈락한다."
 
+implementation:
+  bundler: "Vite ^6"
+  entry: "index.html + src/main.js"
+  files:
+    src/main.js:        "부트스트랩 — CSV 로드, createGame, 화면 전환 진입"
+    src/game.js:        "세션·화면 루프, 세이브/복구, Three 연출·이벤트 로직 (logic_lead)"
+    src/ui.js:          "showScreen·토스트·포맷 (ui_lead 보조)"
+    src/lavaScene.js:   "씬 조립, PACE/paceMs, 연출 타임라인 (logic_lead)"
+    src/simulation.js:  "스케줄 수학, elimPlanForLevel"
+    src/data.js:        "CSV 파싱(RFC4180), localStorage — SESSION_VERSION, LS_SESSION"
+    src/ranking.js:     "rank-list 렌더, renderWinIcons"
+    src/three/setup.js: "createLavaTopViewBasics, WebGL 렌더러"
+    src/three/players.js: "마커·트윈, computeClusterTargets, layoutAliveCluster"
+    src/three/bridge.js: "7티어 실린더 스텝 + 토러스 링"
+    src/three/arenaMap.js: "지형 데코 — players.js 공유 상수 import"
+    src/three/dispose.js: "disposeScene, 씬 정리"
+    src/style.css:      "UI 토큰, screen-body/screen-footer, lava-canvas-frame (ui_lead)"
+    index.html:         "마크업 — dom_required_ids 전체 포함 (ui_lead)"
+  data_files:
+    - public/lq_bot_config.csv
+    - public/lq_elimination_schedule.csv
+    - public/lq_level_config.csv
+    - public/lq_event_config.csv
+  collaboration:
+    ui_lead: "AntiGravity — index.html, src/style.css, src/ui.js (2D 셸 주 담당)"
+    logic_lead: "Claude Code / 단서 — src/game.js, src/main.js, src/lavaScene.js, src/data.js"
+
+  ai_directives:
+    read_order:
+      - "1. Advanced Implementation Specs 섹션을 가장 먼저 읽는다"
+      - "2. Anti-Patterns 섹션을 읽고 과거 버그를 숙지한다"
+      - "3. Agent Audit Log를 읽고 실제 발생했던 버그를 숙지한다"
+      - "4. collaboration 담당 구분에 따라 자신의 역할 파일만 수정한다"
+      - "5. UI Architecture HTML 구조(dom_required_ids)를 토씨 하나 틀리지 않고 반영한다"
+    completion_checklist:
+      - "게임 실행 → screen-matching이 표시되고 100명 매칭 연출이 실행되는가"
+      - "계속 탭 → screen-lobby + Three.js 씬(돌다리+마커)이 정상 렌더링되는가 (빈 캔버스 = 실패)"
+      - "도전 시작 → screen-attempt가 표시되고 성공/실패 버튼이 탭 가능한가"
+      - "성공 탭 → screen-clear에서 플레이어 전진 후 봇 탈락 연출이 CSV 순서대로 실행되는가"
+      - "실패 탭 → 풀스크린 낙하 연출 후 screen-fail이 표시되는가"
+      - "7클리어 → screen-full-clear → 보상 확인 → 매칭 화면으로 리셋되는가"
+      - "새로고침 → localStorage에서 세션 복구 후 매칭 연출부터 재시작되는가"
+      - "Three.js canvas가 #canvas-container clientWidth/clientHeight 기준으로 setSize되는가"
+    rule: "위 8개 중 하나라도 실패 시 완료 선언 금지. 즉시 수정할 것."
+
 # --- 확장 메타(규범 외, 저장 허용) ---
 implementation_truth:
   document_role: "본 파일은 레포의 구조적 단일 개요이다. (1) 기획·스펙: YAML mechanics/goals. (2) 구현 계약: dom id, 세이브 스키마, UI 셸 규약, Three·CSV·부트 순서. (3) 운영 지식: agent_audit_log·Anti-patterns — 재구현·멀티 에이전트(AntiGravity·Claude·단서) 작업 시 여기와 실제 소스가 어긋나면 **먼저 MD를 고치거나 소스를 MD에 맞출지 결정**하고 진행한다. HTML/CSS 전문은 저장소에 두고 이 문서에는 id·패턴 요약만 둔다."
@@ -228,6 +273,94 @@ agent_audit_log:
       fix: "players.js computeClusterTargets — 동시 게임 가정으로 생존자 전원 tier=playerClears(클램프 0..7)"
   non_goals:
     - "본 레포는 매칭·서버 동기화 없음 — CSV/로컬 연출 데모"
+---
+
+## User Flow
+
+### 1. 매칭
+게임 로드 → screen-matching 표시
+  → 점(dot) 아이콘 순차 등장 (N/100 카운트업)
+  → "계속" 버튼 활성화
+  → 탭 → screen-lobby
+
+### 2. 로비
+Three.js 씬 마운트 (#canvas-container)
+  → 돌다리 + 마커 100개 렌더링
+  → 타이머 표시 (lobby-timer)
+  → "도전 시작" 탭 → screen-attempt
+
+### 3. 시도 (ATTEMPT)
+레벨 번호 + 생존자 수 + tip_text 표시
+  → 성공 버튼 탭 → resolve_success
+  → 실패 버튼 탭 → resolve_failure
+
+### 4-A. 성공 분기
+screen-clear 전환
+  → 플레이어 마커 전진 트윈
+  → CSV delay_ms × PACE 간격으로 봇 탈락 연출
+  → 생존자 파동 재배치
+  → clearsCompleted == 7 ? FULL_CLEAR 분기 : "계속" → 로비
+
+### 4-B. 실패 분기
+풀스크린 임시 씬 → 낙하 연출 (animateSelfEliminate)
+  → screen-fail 표시
+  → "보상 받기" 탭 → screen-reward
+
+### 5. 전체 클리어
+screen-full-clear 표시
+  → 생존자 수 + 공유 카피
+  → "보상 받기" 탭 → screen-reward
+
+### 6. 보상
+reward-grid 표시 + bonus-multiplier
+  → "확인" 탭 → resetToFreshEvent()
+  → screen-matching 재진입 + 매칭 연출
+
+### 예외: 세션 복구 (새로고침)
+localStorage lq_session_v1 존재
+  → 유효성 검증 + 보정
+  → screen-matching + startMatchingAnimated() (자동 로비 스킵 없음)
+
+---
+
+## Advanced Implementation Specs (AI Directives)
+Three.js + DOM 복합 구조에서 반드시 지켜야 할 사항. Agent Audit Log에서 도출된 규칙:
+
+1. **Three.js Canvas 크기 동기화 (DANA 규칙)**:
+   - `renderer.setSize()`는 반드시 `#canvas-container`의 `getBoundingClientRect()` 기준
+   - `window.innerWidth/innerHeight` 사용 금지
+   - resize 시 `ortho frustum` 재계산 필수 (`setup.createLavaTopViewBasics`)
+
+2. **arenaMap.js ↔ players.js export/import 일치 (CRITICAL)**:
+   - 공유 상수는 `players.js` 단일 정의 후 import
+   - 불일치 시 즉시 빌드 중단 — `npm run build`로 반드시 검증
+
+3. **mountLavaScene playerClears 명시**:
+   - 로비: `playerClears = clearsCompleted`
+   - 클리어 연출 직전: `playerClears = clearsCompleted - 1` (`bridgeTierBeforeWin`)
+   - 생략 시 HUD와 Three.js 씬 티어 불일치 발생
+
+4. **보상 확인 후 완전 초기화 패턴**:
+   - `localStorage` 삭제만으로 부족 — 메모리의 `alive`, `clearsCompleted`와 불일치
+   - 반드시 `resetToFreshEvent()` 패턴 사용:
+     `clearPersistentSession() + alive/clears 초기화 + persistSnapshot() + screen-matching + startMatchingAnimated()`
+
+5. **dispose 필수**:
+   - 화면 전환 시 이전 `mountLavaScene` 인스턴스 `disposeScene` 호출
+   - 누락 시 WebGL 메모리 누수 + 렌더 루프 중복 실행
+
+6. **실패 연출 임시 노드**:
+   - 고정 `#lq-fx-mount` 레이어 사용 금지 (WebGL 씬 가림)
+   - `failAnimFullScreen`은 body에 임시 div 부착 후 연출 완료 시 `remove()`
+
+7. **탈락 스케줄 단일 출처**:
+   - 봇 탈락 순서는 반드시 `lq_elimination_schedule.csv` 기반
+   - `elimPlanForLevel` 함수: 플레이어(bot_001/index 0) 항목 제외, 중복 bot_id는 최소 delay만 유지
+
+8. **completion_checklist 통과 기준**:
+   - "Three.js 씬 정상 렌더링" = 로비에서 돌다리와 마커가 실제로 화면에 보여야 통과
+   - 콘솔 에러 없음 / 빈 캔버스만으로 통과 선언 금지
+
 ---
 
 ## Design Pillars
